@@ -9,6 +9,9 @@ from utils.security import hash_password, verify_password
 from utils.token import generate_reset_token, verify_reset_token
 
 from utils.email import send_email  
+from app.templates import render_template
+from utils.sendgrid_email import send_email
+from utils.token import generate_reset_token
 
 router = APIRouter()
 
@@ -49,6 +52,30 @@ class ForgotPasswordInput(BaseModel):
     email: EmailStr
 
 # ---------- AUTH ROUTES ----------
+# @router.post("/auth/register")
+# def register(data: RegisterInput, db: Session = Depends(get_db)):
+#     existing_user = db.query(User).filter(User.email == data.email).first()
+#     if existing_user:
+#         raise HTTPException(status_code=400, detail="User already exists")
+
+#     new_user = User(
+#         name=data.name,
+#         email=data.email,
+#         hashed_password=hash_password(data.password)
+#     )
+#     db.add(new_user)
+#     db.commit()
+#     db.refresh(new_user)
+
+#      html = render_template(
+#         "registeration.html",
+#         first_name=user.name.split()[0],
+#         token=token,
+#         domain=domain,
+#     )
+
+#     return {"message": "User registered successfully"}
+# ---------- AUTH ROUTES ----------
 @router.post("/auth/register")
 def register(data: RegisterInput, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == data.email).first()
@@ -63,6 +90,30 @@ def register(data: RegisterInput, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    # ✅ Generate token for this user
+    token = create_access_token({
+        "sub": str(new_user.id),
+        "email": new_user.email,
+        "role": "user"
+    })
+
+    # ✅ Define your domain (hardcoded or from settings)
+    domain = "http://localhost:3000"
+
+    # ✅ Render email HTML
+    html = render_template(
+        "registeration.html",
+        first_name=new_user.name.split()[0],
+        token=token,
+        domain=domain,
+    )
+
+    # ✅ Send email if needed — example:
+    # subject = "Welcome to FBOrganization"
+    # success = send_email(to_email=new_user.email, subject=subject, html=html)
+    # if not success:
+    #     raise HTTPException(status_code=500, detail="Failed to send email")
 
     return {"message": "User registered successfully"}
 
@@ -80,47 +131,59 @@ def login(data: LoginInput, db: Session = Depends(get_db)):
 
     return {"accessToken": token}
 
-# @router.post("/auth/forgot-password")
-# def forgot_password(data: ForgotPasswordInput, request: Request, db: Session = Depends(get_db)):
-#     user = db.query(User).filter(User.email == data.email).first()
-#     if not user:
-#         raise HTTPException(status_code=404, detail="User not found")
-
-#     token = generate_reset_token(data.email)
-#     reset_link = f"{request.base_url}auth/reset-password?token={token}"
-
-#     # TODO: send `reset_link` via email in production
-#     return {"reset_link": reset_link, "message": "Reset link generated. Check your email."}
-
 @router.post("/auth/forgot-password")
 async def forgot_password(data: ForgotPasswordInput, request: Request, db: Session = Depends(get_db)):
-    email = data.email
-    user = db.query(User).filter(User.email == email).first()
+    user = db.query(User).filter(User.email == data.email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    token = generate_reset_token(email)
-    reset_link = f"{request.base_url}auth/reset-password/{token}"
+    token = generate_reset_token(user.email)
+    domain = request.base_url.hostname or "busybrains.ai"
 
-    subject = "Password Reset Request - FBOrganization"
-    body = f"""
-Hi {user.name},
+    html = render_template(
+        "forgot_password_notification.html",
+        first_name=user.name.split()[0],
+        token=token,
+        domain=domain,
+    )
 
-You requested to reset your password. Click the link below:
+    subject = "Reset Your Password – BusyBrains"
+    success = send_email(to_email=user.email, subject=subject, html=html)
 
-{reset_link}
-
-If you did not request this, you can ignore this email.
-
-— FBOrganization Team
-"""
-
-    from utils.sendgrid_email import send_email
-    success = send_email(email, subject, body)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to send email")
 
-    return {"reset_link": reset_link, "message": "Reset link sent to email"}
+    return {"message": "Reset link sent to email"}
+    
+# @router.post("/auth/forgot-password")
+# async def forgot_password(data: ForgotPasswordInput, request: Request, db: Session = Depends(get_db)):
+#     email = data.email
+#     user = db.query(User).filter(User.email == email).first()
+#     if not user:
+#         raise HTTPException(status_code=404, detail="User not found")
+
+#     token = generate_reset_token(email)
+#     reset_link = f"{request.base_url}auth/reset-password/{token}"
+
+#     subject = "Password Reset Request - FBOrganization"
+#     body = f"""
+# Hi {user.name},
+
+# You requested to reset your password. Click the link below:
+
+# {reset_link}
+
+# If you did not request this, you can ignore this email.
+
+# — FBOrganization Team
+# """
+
+#     from utils.sendgrid_email import send_email
+#     success = send_email(email, subject, body)
+#     if not success:
+#         raise HTTPException(status_code=500, detail="Failed to send email")
+
+#     return {"reset_link": reset_link, "message": "Reset link sent to email"}
 
     
 @router.post("/auth/reset-password")
