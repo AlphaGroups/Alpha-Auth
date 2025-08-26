@@ -1,11 +1,15 @@
 from fastapi import FastAPI
 from dotenv import load_dotenv
 from auth.routes import router as auth_router  # ✅ path relative to root
-
+from database import Base, engine
+from models import User
 # load_dotenv()
 
 # app = FastAPI()
 # app.include_router(auth_router, prefix="/api")
+
+Base.metadata.create_all(bind=engine)
+
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
