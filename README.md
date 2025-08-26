@@ -97,3 +97,83 @@ $ source venv/Scripts/activate
 ISCS@DESKTOP-MMGUTR4 MINGW64 ~/Desktop/personal/auth-backend-fastapi (main)
 $ uvicorn main:app --reload
 
+
+
+
+# How to dockerize the project
+
+create a dockerfile
+
+then add 
+
+
+# second create dockerignore file and add the following
+__pycache__/
+*.pyc
+venv/
+.DS_Store
+
+
+# docker-compose.yml file   
+
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: auth_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fastapi-app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: user
+      DB_PASSWORD: password
+      DB_NAME: auth_db
+
+volumes:
+  mysql_data:
+
+# 5. Update database.py in FastAPI
+Update your MySQL connection string to use environment variables:
+
+#  6. Add pymysql to requirements.txt
+Make sure requirements.txt includes:
+
+css
+Copy
+Edit
+fastapi
+uvicorn[standard]
+sqlalchemy
+pymysql
+
+# 7. Run Everything
+In your terminal:
+
+docker-compose up --build
+
+# Your FastAPI app will be live at:
+
+http://localhost:9080/docs
