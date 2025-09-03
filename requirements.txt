@@ -11,7 +11,7 @@ sqlmodel==0.0.24  # Optional if you're using SQLModel
 passlib[bcrypt]==1.7.4
 python-jose==3.5.0
 email_validator==2.2.0
-bcrypt==4.3.0
+bcrypt==3.2.2
 python-dotenv==1.1.1
 
 # Supporting Dependencies
