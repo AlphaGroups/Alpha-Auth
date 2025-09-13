@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: alpha-auth-backend
+    runtime: docker
+    plan: free   # change to starter/standard if needed
+    branch: feature/lms
+    autoDeploy: true
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
