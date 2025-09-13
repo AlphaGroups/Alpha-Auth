@@ -27,6 +27,9 @@
 #         yield db
 #     finally:
 #         db.close()
+
+# database.py
+
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -46,7 +49,19 @@ if ENV == "development":
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base = declarative_base()
 
+    # ✅ Dependency for FastAPI routes
+    def get_db():
+        db = SessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
 else:  # production -> MongoDB
     MONGO_URI = os.getenv("MONGO_URI")
     mongo_client = AsyncIOMotorClient(MONGO_URI)
     mongo_db = mongo_client.get_default_database()
+
+    # For MongoDB, you can provide an async dependency
+    async def get_db():
+        yield mongo_db
