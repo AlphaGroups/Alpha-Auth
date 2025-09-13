@@ -296,13 +296,12 @@
 
 
 # routers/auth.py
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Body
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List
+from typing import Optional
 from datetime import timedelta
 import os
-import asyncio
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -310,17 +309,14 @@ load_dotenv()
 from database import get_db, ENV
 from models import User, RoleEnum
 from utils.security import hash_password, verify_password
-from utils.token import generate_reset_token, verify_reset_token
-from app.templates import render_template
-from utils.sendgrid_email import send_email
-from auth.jwt import create_access_token, verify_token
+from auth.jwt import create_access_token
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 # Token expiry
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
-REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 15))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7))
 
 # ---------- SCHEMAS ----------
 class RegisterInput(BaseModel):
@@ -342,21 +338,13 @@ class TokenResponse(BaseModel):
     token_type: str
 
 class UserResponse(BaseModel):
-    id: Optional[int] = None
+    id: Optional[str] = None
     name: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: EmailStr
     role: RoleEnum
     mobile: Optional[str] = None
-    model_config = {"from_attributes": True}
-
-class ResetPasswordInput(BaseModel):
-    token: str
-    new_password: str
-
-class ForgotPasswordInput(BaseModel):
-    email: EmailStr
 
 # ---------- HELPERS ----------
 def build_token_pair(user: dict) -> dict:
@@ -384,7 +372,7 @@ def serialize_user(user) -> dict:
         mobile = str(getattr(user, "mobile", None)) if getattr(user, "mobile", None) else None
         role = getattr(user, "role").value if hasattr(getattr(user, "role"), "value") else getattr(user, "role")
     else:  # MongoDB
-        uid = user.get("_id")
+        uid = str(user.get("_id"))
         email = user.get("email")
         name = user.get("name")
         first_name = user.get("first_name")
@@ -393,7 +381,9 @@ def serialize_user(user) -> dict:
         role = user.get("role")
     return {"id": uid, "email": email, "name": name, "first_name": first_name, "last_name": last_name, "mobile": mobile, "role": role}
 
-# ---------- LOGIN ----------
+# ---------- ROUTES ----------
+
+# LOGIN
 @router.post("/login", response_model=TokenResponse)
 async def login(data: LoginInput, db=Depends(get_db)):
     if ENV == "development":
@@ -405,9 +395,9 @@ async def login(data: LoginInput, db=Depends(get_db)):
         user = await db["users"].find_one({"email": data.email})
         if not user or not verify_password(data.password, user.get("hashed_password")):
             raise HTTPException(status_code=401, detail="Invalid credentials")
-        return build_token_pair(user)
+        return build_token_pair(serialize_user(user))
 
-# ---------- REGISTER ----------
+# REGISTER
 @router.post("/register", response_model=UserResponse)
 async def register(data: RegisterInput, db=Depends(get_db)):
     if data.password != data.confirm_password:
@@ -431,7 +421,7 @@ async def register(data: RegisterInput, db=Depends(get_db)):
         db.commit()
         db.refresh(new_user)
         return serialize_user(new_user)
-    else:
+    else:  # MongoDB
         existing = await db["users"].find_one({"email": data.email})
         if existing:
             raise HTTPException(status_code=400, detail="User already exists")
