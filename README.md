@@ -177,3 +177,24 @@ docker-compose up --build
 # Your FastAPI app will be live at:
 
 http://localhost:9080/docs
+
+
+
+
+# Run dev tunnel
+
+#🔄 Fix Dev Tunnel Expired Token
+
+Re-login:
+
+### devtunnel user login --github --use-browser-auth
+
+
+👉 This will open your browser → authorize with GitHub again.
+
+## Host your backend again:
+
+### devtunnel host -p 9080 --allow-anonymous
+
+
+Copy the new tunnel URL it shows (something like https://abcd1234-9080.inc1.devtunnels.ms) and update it in your frontend .env (instead of the old one).
