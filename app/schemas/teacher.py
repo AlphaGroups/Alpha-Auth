@@ -6,7 +6,8 @@ class TeacherCreate(BaseModel):
     email: EmailStr
     mobile: Optional[str] = None
     password: str
-    college_id: int
+    college_id: int   # ✅ links teacher to a college
+    subject: str      # ✅ new field
 
 class TeacherOut(BaseModel):
     id: int
@@ -14,6 +15,7 @@ class TeacherOut(BaseModel):
     email: EmailStr
     mobile: Optional[str] = None
     college_id: int
+    subject: str      # ✅ include subject in response
 
     class Config:
-        from_attributes = True   # Pydantic v2 replacement for orm_mode
+        from_attributes = True   # replacement for orm_mode

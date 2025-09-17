@@ -4,13 +4,21 @@ from typing import Optional
 class CollegeBase(BaseModel):
     name: str
 
+
 class CollegeCreate(CollegeBase):
-    pass
+    # ✅ Optional embedded admin data
+    admin_full_name: str
+    admin_email: EmailStr
+    admin_mobile: Optional[str] = None
+    admin_password: str
+
 
 class CollegeOut(CollegeBase):
     id: int
+
     class Config:
         orm_mode = True
+
 
 class AdminCreate(BaseModel):
     full_name: str
