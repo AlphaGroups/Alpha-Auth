@@ -8,7 +8,7 @@ __pycache__/
 venv/
 
 # Ignore environment variables file
-.env
+# .env
 
 # VSCode and JetBrains IDE settings (optional)
 .vscode/
