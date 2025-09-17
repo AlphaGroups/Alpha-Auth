@@ -52,6 +52,7 @@ class College(Base):
 class Admin(Base):
     __tablename__ = "admins"
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True)
     full_name = Column(String(150), nullable=False)  # ✅ Added length
     email = Column(String(100), unique=True, nullable=False)
     phone = Column(String(20), nullable=True)
@@ -59,18 +60,40 @@ class Admin(Base):
 
     college = relationship("College", back_populates="admins")
 
+class Teacher(Base):
+    __tablename__ = "teachers"
+    id = Column(Integer, primary_key=True, index=True)
+    full_name = Column(String(150), nullable=False)
+    email = Column(String(100), unique=True, nullable=False)
+    mobile = Column(String(20), nullable=True)
+    hashed_password = Column(String(255), nullable=False)
+
+    # 🔗 Link to college
+    college_id = Column(Integer, ForeignKey("colleges.id"), nullable=False)
+    college = relationship("College", backref="teachers")
+
+    # 🔗 Link to admin who created this teacher
+    created_by_admin_id = Column(Integer, ForeignKey("admins.id"), nullable=True)
+    created_by_admin = relationship("Admin", backref="created_teachers")
+
 
 class Student(Base):
     __tablename__ = "students"
     id = Column(Integer, primary_key=True, index=True)
-    student_id = Column(String(50), unique=True, index=True)  # College student ID
+    student_id = Column(String(50), unique=True, index=True)  # Unique college ID
     first_name = Column(String(50), nullable=False)
     last_name = Column(String(50), nullable=True)
     birth_year = Column(Integer, nullable=False)
     email = Column(String(100), unique=True, nullable=False)
     mobile = Column(String(20), nullable=True)
     hashed_password = Column(String(255), nullable=False)
-    college_id = Column(Integer, ForeignKey("colleges.id"))
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # 🔗 Link to college
+    college_id = Column(Integer, ForeignKey("colleges.id"), nullable=False)
     college = relationship("College", back_populates="students")
+
+    # 🔗 Link to teacher who created this student
+    created_by_teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=True)
+    created_by_teacher = relationship("Teacher", backref="created_students")
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
