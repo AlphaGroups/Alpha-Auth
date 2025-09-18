@@ -63,10 +63,16 @@ class Admin(Base):
 class Teacher(Base):
     __tablename__ = "teachers"
     id = Column(Integer, primary_key=True, index=True)
+    
+    # 🔗 Link to User
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    user = relationship("User", backref="teacher_profile")
+    
     full_name = Column(String(150), nullable=False)
     email = Column(String(100), unique=True, nullable=False)
     mobile = Column(String(20), nullable=True)
     hashed_password = Column(String(255), nullable=False)
+    subject = Column(String(100), nullable=True)
 
     # 🔗 Link to college
     college_id = Column(Integer, ForeignKey("colleges.id"), nullable=False)
@@ -75,7 +81,6 @@ class Teacher(Base):
     # 🔗 Link to admin who created this teacher
     created_by_admin_id = Column(Integer, ForeignKey("admins.id"), nullable=True)
     created_by_admin = relationship("Admin", backref="created_teachers")
-
 
 class Student(Base):
     __tablename__ = "students"

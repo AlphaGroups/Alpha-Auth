@@ -33,7 +33,7 @@ class AdminResponse(BaseModel):
     full_name: str
     email: EmailStr
     mobile: Optional[str]
-    college: str
+    college_name: str
 
     class Config:
         orm_mode = True

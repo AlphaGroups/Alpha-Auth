@@ -4,7 +4,9 @@ from database import get_db
 import models
 from app.schemas.College_Admin import CollegeCreate, CollegeOut
 from utils.security import hash_password, require_role
-from models import RoleEnum
+from models import RoleEnum , College
+
+
 
 router = APIRouter(prefix="/colleges", tags=["Colleges"])
 
@@ -53,3 +55,10 @@ def create_college(college: CollegeCreate, db: Session = Depends(get_db)):
     db.commit()
 
     return new_college
+
+
+
+@router.get("/", response_model=list[CollegeOut], dependencies=[Depends(require_role([RoleEnum.superadmin.value]))])
+def get_colleges(db: Session = Depends(get_db)):
+    colleges = db.query(College).all()
+    return colleges

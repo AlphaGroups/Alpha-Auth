@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from database import get_db
 from app.schemas.College_Admin import AdminCreate, AdminResponse
-from app.routes.crud_admin import create_admin
+
+from app.routes.crud_admin import create_admin, get_all_admins
 from utils.security import require_superadmin  # 👈 add this
 
 router = APIRouter(prefix="/admins", tags=["Admins"])
@@ -18,7 +19,7 @@ def create_admin_api(admin_data: AdminCreate, db: Session = Depends(get_db)):
             full_name=admin.full_name,
             email=admin.email,
             mobile=admin.phone,
-            college=admin.college.name,
+            college_name=admin.college.name,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -27,3 +28,18 @@ def create_admin_api(admin_data: AdminCreate, db: Session = Depends(get_db)):
         if "users.email" in str(e.orig):
             raise HTTPException(status_code=400, detail="Email already exists")
         raise HTTPException(status_code=400, detail="Database integrity error")
+
+
+@router.get("/", response_model=list[AdminResponse], dependencies=[Depends(require_superadmin)])
+def get_admins(db: Session = Depends(get_db)):
+    admins = get_all_admins(db)  # Implement in crud_admin.py
+    return [
+        AdminResponse(
+            id=admin.id,
+            full_name=admin.full_name,
+            email=admin.email,
+            mobile=admin.phone,
+            college_name=admin.college.name,
+        )
+        for admin in admins
+    ]

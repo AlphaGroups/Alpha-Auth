@@ -6,8 +6,8 @@ class TeacherCreate(BaseModel):
     email: EmailStr
     mobile: Optional[str] = None
     password: str
-    college_id: int   # ✅ links teacher to a college
     subject: str      # ✅ new field
+    college_id: Optional[int] = None   # ✅ only SuperAdmin uses this
 
 class TeacherOut(BaseModel):
     id: int

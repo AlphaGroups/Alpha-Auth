@@ -1,10 +1,3 @@
-# from pydantic import BaseModel
-
-# class VideoUpload(BaseModel):
-#     title: str
-#     url: str
-
-
 from pydantic import BaseModel, validator
 from typing import List, Optional
 from datetime import datetime
