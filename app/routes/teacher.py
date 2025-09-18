@@ -17,18 +17,27 @@ router = APIRouter(prefix="/teachers", tags=["Teachers"])
 def create_teacher_api(
     teacher_data: TeacherCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),  # get logged-in admin
+    current_user: User = Depends(get_current_user),  # logged-in user
 ):
+    """
+    Create a new Teacher.
+    - If role = Admin → teacher auto-linked to Admin's college
+    - If role = SuperAdmin → must provide `college_id`
+    """
     try:
-        # If Admin, attach their college_id
         if current_user.role == RoleEnum.admin:
+            # Admin → bind teacher to their own college
             admin = db.query(Admin).filter(Admin.user_id == current_user.id).first()
             if not admin:
                 raise HTTPException(status_code=400, detail="Admin not found")
             college_id = admin.college_id
             created_by_admin_id = admin.id
-        else:
-            # SuperAdmin must explicitly provide a college_id (future option)
+        else:  # SuperAdmin
+            if not teacher_data.college_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="SuperAdmin must provide a college_id",
+                )
             college_id = teacher_data.college_id
             created_by_admin_id = None
 
@@ -39,5 +48,6 @@ def create_teacher_api(
             created_by_admin_id=created_by_admin_id,
         )
         return teacher
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

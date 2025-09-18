@@ -96,20 +96,23 @@ def create_superadmin():
     if not email:
         db.close()
         return
+
     existing = db.query(User).filter(User.email == email).first()
     if not existing:
+        first_name = os.getenv("ADMIN_FIRST_NAME", "Super")
+        last_name = os.getenv("ADMIN_LAST_NAME", "Admin")
         admin = User(
-            name=os.getenv("ADMIN_USER", "Super Admin"),
+            name=f"{first_name} {last_name}",
+            first_name=first_name,
+            last_name=last_name,
             email=email,
             hashed_password=hash_password(os.getenv("ADMIN_PASS", "admin123")),
-            role=RoleEnum.superadmin
+            role=RoleEnum.superadmin,
+            mobile=os.getenv("ADMIN_MOBILE")  # optional
         )
-        # set mobile if model has it
-        if hasattr(admin, "mobile"):
-            admin.mobile = None
         db.add(admin)
         db.commit()
-        print(f"Superadmin {email} created")
+        print(f"✅ Superadmin {email} created")
     db.close()
 
 # ---------- Helpers ----------
@@ -293,3 +296,4 @@ def reset_password(data: ResetPasswordInput, db: Session = Depends(get_db_sessio
     user.hashed_password = hash_password(data.new_password)
     db.commit()
     return {"message": "Password has been reset successfully"}
+

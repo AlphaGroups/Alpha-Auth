@@ -56,8 +56,15 @@ def create_superadmin():
 
         existing = db.query(User).filter(User.email == admin_email).first()
         if not existing:
+            # Split full name into first and last name
+            parts = admin_user.strip().split()
+            first_name = parts[0]
+            last_name = " ".join(parts[1:]) if len(parts) > 1 else None
+        
             superadmin = User(
                 name=admin_user,
+                first_name=first_name,
+                last_name=last_name,
                 email=admin_email,
                 hashed_password=hash_password(admin_pass),
                 role=RoleEnum.superadmin,
@@ -65,6 +72,7 @@ def create_superadmin():
             db.add(superadmin)
             db.commit()
             print("✅ Superadmin created:", admin_email)
+
         else:
             print("ℹ️ Superadmin already exists:", admin_email)
     finally:
