@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from database import get_db, SessionLocal
-from models import User, RoleEnum
+from models import User, Student, RoleEnum
 from utils.security import hash_password, verify_password
 from utils.token import generate_reset_token, verify_reset_token
 from app.templates import render_template
@@ -131,7 +131,7 @@ def build_token_pair(user: User) -> dict:
         "token_type": "bearer",
     }
 
-def serialize_user(user: User) -> dict:
+def serialize_user(user) -> dict:
     uid = getattr(user, "id", None)
     email = getattr(user, "email", None)
     name = getattr(user, "name", None)
@@ -148,8 +148,12 @@ def serialize_user(user: User) -> dict:
     raw_mobile = getattr(user, "mobile", None)
     mobile = str(raw_mobile) if raw_mobile is not None else None
 
+    # fallback role to "student" if missing
     role_attr = getattr(user, "role", None)
-    role_value = role_attr.value if hasattr(role_attr, "value") else role_attr
+    if role_attr is None:
+        role_value = "student"
+    else:
+        role_value = role_attr.value if hasattr(role_attr, "value") else role_attr
 
     return {
         "id": uid,
@@ -163,18 +167,60 @@ def serialize_user(user: User) -> dict:
 
 # ---------- OAuth2 / Swagger Login ----------
 @router.post("/token", response_model=TokenResponse)
+# def login_for_access_token(
+#     form_data: OAuth2PasswordRequestForm = Depends(),
+#     db: Session = Depends(get_db_session)
+# ):
+#     user = db.query(User).filter(User.email == form_data.username).first()
+#     if not user or not verify_password(form_data.password, user.hashed_password):
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Incorrect username or password",
+#             headers={"WWW-Authenticate": "Bearer"},
+#         )
+#     return build_token_pair(user)# ---------- OAuth2 / Swagger Login (Admin / Teacher / Student) ----------
+# @router.post("/auth/token", response_model=TokenResponse)
 def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db_session)
 ):
+    # Try to find user in general User table
     user = db.query(User).filter(User.email == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+
+    # If not found, try to find in Student table
+    if not user:
+        user = db.query(Student).filter(Student.email == form_data.username).first()
+
+    if not user:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            status_code=401,
+            detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return build_token_pair(user)
+
+    # Verify password
+    if not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Build JWT token
+    token_data = {
+        "sub": str(getattr(user, "id", getattr(user, "student_id", None))),
+        "email": user.email,
+        "role": getattr(user, "role", "student").value if hasattr(user, "role") else "student"
+    }
+    access_token = create_access_token(token_data)
+    refresh_token = create_access_token(token_data, expires_delta=timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer"
+    }
+
 
 # ---------- JSON Login Endpoint ----------
 @router.post("/login", response_model=TokenResponse)
@@ -185,23 +231,48 @@ def login(data: LoginInput, db: Session = Depends(get_db_session)):
     return build_token_pair(user)
 
 # ---------- Current User ----------
-def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db_session),
-):
+# def get_current_user(
+#     token: str = Depends(oauth2_scheme),
+#     db: Session = Depends(get_db_session),
+# ):
+#     payload = verify_token(token)
+#     if not payload:
+#         raise HTTPException(status_code=401, detail="Invalid or expired token")
+#     user_id = payload.get("sub")
+#     try:
+#         uid = int(user_id)
+#     except Exception:
+#         raise HTTPException(status_code=401, detail="Invalid token payload")
+
+#     user = db.query(User).filter(User.id == uid).first()
+#     if not user:
+#         raise HTTPException(status_code=404, detail="User not found")
+#     return user
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     payload = verify_token(token)
     if not payload:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+        raise HTTPException(status_code=401, detail="Invalid token")
+
     user_id = payload.get("sub")
-    try:
-        uid = int(user_id)
-    except Exception:
+    role = payload.get("role")
+
+    if not user_id or not role:
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
-    user = db.query(User).filter(User.id == uid).first()
+    try:
+        uid = int(user_id)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid user id in token")
+
+    if role == "student":
+        user = db.query(Student).filter(Student.id == uid).first()
+    else:
+        user = db.query(User).filter(User.id == uid).first()
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
 
 # ----------- User Profile -----------
 @router.get("/profile", response_model=UserResponse)
