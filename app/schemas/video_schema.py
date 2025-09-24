@@ -13,6 +13,7 @@ class VideoBase(BaseModel):
     category: str
     tags: List[str] = []
     difficulty: str
+    class_id: int  # ✅ Add this
 
     @validator("youtubeId", pre=True)
     def extract_video_id(cls, value):
