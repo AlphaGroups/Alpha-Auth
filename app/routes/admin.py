@@ -50,7 +50,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from database import get_db
 from app.schemas.College_Admin import AdminCreate, AdminResponse
-from app.routes.crud_admin import create_admin, get_all_admins
+from app.curd.crud_admin import create_admin, get_all_admins
 from models import Admin
 from utils.security import require_superadmin
 
