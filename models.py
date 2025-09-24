@@ -1,7 +1,8 @@
 from database import Base
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, func, Text, Enum
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, func, Text, Enum, UniqueConstraint
 import enum
 from sqlalchemy.orm import relationship
+from utils.youtube import get_embed_url  # or extract_youtube_id if you renamed it
 
 
 class RoleEnum(str, enum.Enum):
@@ -24,20 +25,37 @@ class User(Base):
     role = Column(Enum(RoleEnum), default=RoleEnum.student, nullable=False)
 
 
+# class Video(Base):
+#     __tablename__ = "videos"
+
+#     id = Column(Integer, primary_key=True, index=True)
+#     title = Column(String(255), nullable=False)
+#     description = Column(Text, nullable=True)
+#     youtubeId = Column(String(20), nullable=False)  # YouTube video ID
+#     category = Column(String(100), nullable=True)
+#     tags = Column(Text, nullable=True)
+#     difficulty = Column(String(50), nullable=True)
+#     uploaded_by = Column(Integer, ForeignKey("users.id"))
+#     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+#     uploader = relationship("User", backref="videos")
+
 class Video(Base):
     __tablename__ = "videos"
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    youtubeId = Column(String(20), nullable=False)  # YouTube video ID
+    youtubeId = Column(String(50), nullable=False)  # just the column
     category = Column(String(100), nullable=True)
     tags = Column(Text, nullable=True)
     difficulty = Column(String(50), nullable=True)
     uploaded_by = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    class_id = Column(Integer, ForeignKey("classes.id"), nullable=False)
 
     uploader = relationship("User", backref="videos")
+    class_ = relationship("Class", back_populates="videos")
 
 
 class College(Base):
@@ -102,3 +120,29 @@ class Student(Base):
     created_by_teacher = relationship("Teacher", backref="created_students")
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class Class(Base):
+    __tablename__ = "classes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), unique=True, nullable=False)  # "1", "2", ..., "12"
+
+    # Videos belonging to this class
+    videos = relationship("Video", back_populates="class_")
+
+    # Admins who have access to this class
+    admins = relationship("AdminClassAccess", back_populates="class_")
+
+
+
+class AdminClassAccess(Base):
+    __tablename__ = "admin_class_access"
+
+    id = Column(Integer, primary_key=True, index=True)
+    admin_id = Column(Integer, ForeignKey("admins.id"), nullable=False)
+    class_id = Column(Integer, ForeignKey("classes.id"), nullable=False)
+
+    __table_args__ = (UniqueConstraint('admin_id', 'class_id', name='_admin_class_uc'),)
+
+    admin = relationship("Admin", backref="class_accesses")
+    class_ = relationship("Class", backref="admin_accesses")

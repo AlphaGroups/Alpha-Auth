@@ -7,10 +7,14 @@ from app.routes.video_routes import router as video_router
 from models import User, RoleEnum
 from utils.security import hash_password
 import os
-from app.routes.teacher import router as teacher_router
+
 from app.routes.admin import router as admin_router
-from app.routes.college import router as college_router
+from app.routes.adminaccess import router as adminvideos_router
+
+from app.routes.teacher import router as teacher_router
 from app.routes.student import router as student_router
+
+from app.routes.college import router as college_router
 
 # Load environment variables
 load_dotenv()
@@ -27,6 +31,7 @@ app.include_router(teacher_router)
 app.include_router(admin_router)
 app.include_router(college_router)
 app.include_router(student_router)
+app.include_router(adminvideos_router)
 
 
 # Enable CORS for frontend

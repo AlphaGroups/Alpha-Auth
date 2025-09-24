@@ -19,21 +19,22 @@
 #         return f"https://www.youtube.com/embed/{video_id}?si={si_match.group(1)}"
 #     else:
 #         return f"https://www.youtube.com/embed/{video_id}"
+
+
+# utils/youtube.py
 import re
 from urllib.parse import urlparse, parse_qs
 
-def get_embed_url(youtube_url: str) -> str:
-    # Try to extract video ID
+def extract_youtube_id(youtube_url: str) -> str:
+    """Extracts YouTube video ID from any valid YouTube URL"""
     match = re.search(r"(?:watch\?v=|youtu\.be/)([^&?]+)", youtube_url)
     if not match:
         raise ValueError("Invalid YouTube URL")
-    video_id = match.group(1)
+    return match.group(1)
 
-    # Extract si parameter if present
-    query_params = parse_qs(urlparse(youtube_url).query)
-    si_param = query_params.get("si", [None])[0]
-
-    embed_url = f"https://www.youtube.com/embed/{video_id}"
-    if si_param:
-        embed_url += f"?si={si_param}"
-    return embed_url
+def get_embed_url(video_id: str, si: str = None) -> str:
+    """Generates embed URL from video ID"""
+    url = f"https://www.youtube.com/embed/{video_id}"
+    if si:
+        url += f"?si={si}"
+    return url

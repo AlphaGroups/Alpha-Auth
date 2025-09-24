@@ -56,7 +56,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from app.schemas.teacher import TeacherCreate, TeacherOut
 from models import RoleEnum, User, Admin, Teacher
-from ..curd.crud_teacher import create_teacher
+from app.crud.crud_teacher import create_teacher
 from utils.security import require_role, get_current_user
 from typing import List
 

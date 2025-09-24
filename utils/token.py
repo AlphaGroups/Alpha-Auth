@@ -15,22 +15,22 @@
 #         return None
 
 
-
+# utils/token.py
+from jose import jwt, JWTError
+from datetime import datetime, timedelta
 import os
-from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
-SECRET_KEY = os.getenv("SECRET_KEY", "supersecret")
-RESET_PASSWORD_SALT = os.getenv("RESET_PASSWORD_SALT", "reset-password-salt")
+SECRET_KEY = os.getenv("JWT_SECRET", "supersecret")
+ALGORITHM = "HS256"
 
-def generate_reset_token(email: str) -> str:
-    serializer = URLSafeTimedSerializer(SECRET_KEY)
-    return serializer.dumps(email, salt=RESET_PASSWORD_SALT)
+def create_token(data: dict, expires_delta: int = 3600):
+    to_encode = data.copy()
+    to_encode.update({"exp": datetime.utcnow() + timedelta(seconds=expires_delta)})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def verify_reset_token(token: str, expiration: int = 3600) -> str | None:
-    serializer = URLSafeTimedSerializer(SECRET_KEY)
+def verify_token(token: str):
     try:
-        return serializer.loads(token, salt=RESET_PASSWORD_SALT, max_age=expiration)
-    except SignatureExpired:
-        return None
-    except BadSignature:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
         return None

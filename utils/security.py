@@ -177,7 +177,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 # ---------------- JWT / Auth Helpers ----------------
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 SECRET_KEY = os.getenv("JWT_SECRET", "supersecret")
 ALGORITHM = "HS256"
