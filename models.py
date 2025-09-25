@@ -25,28 +25,13 @@ class User(Base):
     role = Column(Enum(RoleEnum), default=RoleEnum.student, nullable=False)
 
 
-# class Video(Base):
-#     __tablename__ = "videos"
-
-#     id = Column(Integer, primary_key=True, index=True)
-#     title = Column(String(255), nullable=False)
-#     description = Column(Text, nullable=True)
-#     youtubeId = Column(String(20), nullable=False)  # YouTube video ID
-#     category = Column(String(100), nullable=True)
-#     tags = Column(Text, nullable=True)
-#     difficulty = Column(String(50), nullable=True)
-#     uploaded_by = Column(Integer, ForeignKey("users.id"))
-#     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-#     uploader = relationship("User", backref="videos")
-
 class Video(Base):
     __tablename__ = "videos"
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    youtubeId = Column(String(50), nullable=False)  # just the column
+    youtube_url = Column(String(255), nullable=False)  # ✅ full YouTube URL
     category = Column(String(100), nullable=True)
     tags = Column(Text, nullable=True)
     difficulty = Column(String(50), nullable=True)
@@ -56,6 +41,7 @@ class Video(Base):
 
     uploader = relationship("User", backref="videos")
     class_ = relationship("Class", back_populates="videos")
+
 
 
 class College(Base):

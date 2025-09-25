@@ -1,14 +1,12 @@
-# crud/video.py
 from sqlalchemy.orm import Session
 from models import Video
 from utils.youtube import extract_youtube_id, get_embed_url
 
 def create_video(db: Session, video_data: dict, uploader_id: int):
-    video_id = extract_youtube_id(video_data["youtubeUrl"])
     new_video = Video(
         title=video_data["title"],
         description=video_data.get("description"),
-        youtubeId=video_id,
+        youtube_url=video_data["youtube_url"],  # full URL
         category=video_data.get("category"),
         tags=",".join(video_data.get("tags", [])),
         difficulty=video_data.get("difficulty"),
@@ -24,12 +22,13 @@ def get_videos(db: Session):
     videos = db.query(Video).all()
     result = []
     for v in videos:
+        youtube_id = extract_youtube_id(v.youtube_url)
         result.append({
             "id": v.id,
             "title": v.title,
             "description": v.description,
-            "youtubeId": v.youtubeId,
-            "embedUrl": get_embed_url(v.youtubeId),
+            "youtubeId": youtube_id,
+            "embedUrl": get_embed_url(youtube_id),
             "category": v.category,
             "tags": v.tags.split(",") if v.tags else [],
             "difficulty": v.difficulty,
