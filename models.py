@@ -101,6 +101,13 @@ class Student(Base):
     college_id = Column(Integer, ForeignKey("colleges.id"), nullable=False)
     college = relationship("College", back_populates="students")
 
+    # 🔗 Link to class
+    class_id = Column(Integer, ForeignKey("classes.id"), nullable=True)
+    class_ = relationship("Class", back_populates="students")
+
+    # Section field
+    section = Column(String(10), nullable=True)
+
     # 🔗 Link to teacher who created this student
     created_by_teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=True)
     created_by_teacher = relationship("Teacher", backref="created_students")
@@ -112,6 +119,12 @@ class Class(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(50), unique=True, nullable=False)  # "1", "2", ..., "12"
+
+    # Students in this class
+    students = relationship("Student", back_populates="class_")
+
+    # Students in this class
+    students = relationship("Student", back_populates="class_")
 
     # Videos belonging to this class
     videos = relationship("Video", back_populates="class_")

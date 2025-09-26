@@ -1,6 +1,6 @@
 
 from database import Base, engine, SessionLocal
-from models import Class
+from models import *
 
 def create_tables_and_classes():
     # Create all tables
