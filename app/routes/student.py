@@ -230,7 +230,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Student, RoleEnum, Admin, User
+from models import Student, RoleEnum, Admin, User, Class
 from utils.security import hash_password, get_current_user
 import csv
 
@@ -312,6 +312,12 @@ async def import_students(
                 duplicates.append(f"Row {row_num}: Already exists '{student_id}'")
                 continue
 
+            # Get the class by name
+            class_obj = db.query(Class).filter(Class.name == class_name).first()
+            if not class_obj:
+                errors.append(f"Row {row_num}: Class '{class_name}' not found")
+                continue
+
             hashed_password = hash_password(f"{first_name.lower()}{birth_year}")
 
             student = Student(
@@ -322,7 +328,7 @@ async def import_students(
                 email=email,
                 hashed_password=hashed_password,
                 college_id=assigned_college_id,
-                class_name=class_name,
+                class_id=class_obj.id,
                 section=section,
                 created_by_teacher_id=None
             )

@@ -226,10 +226,28 @@ def login_for_access_token(
 # ---------- JSON Login Endpoint ----------
 @router.post("/login", response_model=TokenResponse)
 def login(data: LoginInput, db: Session = Depends(get_db_session)):
+    # Try to find user in general User table
     user = db.query(User).filter(User.email == data.email).first()
+    
+    # If not found, try to find in Student table
+    if not user:
+        user = db.query(Student).filter(Student.email == data.email).first()
+    
     if not user or not verify_password(data.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    return build_token_pair(user)
+    
+    # For students, make sure role is properly set for the token
+    if isinstance(user, Student):
+        # Create a temp object that behaves like User for token creation
+        token_user = type('TokenUser', (), {
+            'id': user.id,
+            'email': user.email,
+            'role': RoleEnum.student
+        })()
+    else:
+        token_user = user
+        
+    return build_token_pair(token_user)
 
 # ---------- Current User ----------
 # def get_current_user(
