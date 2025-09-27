@@ -63,9 +63,9 @@ from sqlalchemy.orm import Session
 from database import get_db
 from app.crud.crud_video import create_video, get_videos
 from app.schemas.video_schema import VideoCreate, VideoResponse
-from auth.routes import get_current_user  # returns User instance
+from auth.routes import get_current_user  # returns User instance (for admin/teacher) or Student instance (for students)
 from utils.youtube import extract_youtube_id, get_embed_url
-from models import Admin  # <<-- need Admin model
+from models import Admin, Teacher, Student, Class, Video  # <<-- need all models
 
 router = APIRouter(prefix="/videos", tags=["Videos"])
 
@@ -80,11 +80,24 @@ def upload_video(video: VideoCreate, db: Session = Depends(get_db), current_user
 
 @router.get("/", response_model=list[VideoResponse])
 def fetch_videos(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    # Determine the role based on the type of object
+    user_role = getattr(current_user, 'role', None)
+    if user_role is None:
+        # For Student objects, the role should be "student"
+        if isinstance(current_user, Student):
+            user_role = "student"
+        else:
+            return []
+    
+    # Convert enum to string if needed
+    if hasattr(user_role, 'value'):
+        user_role = user_role.value
+    
     # Superadmin -> all videos
-    if current_user.role == "superadmin":
+    if user_role == "superadmin":
         videos = get_videos(db)
     # Admin -> lookup Admin row & its class_accesses
-    elif current_user.role == "admin":
+    elif user_role == "admin":
         admin_record = db.query(Admin).filter(Admin.user_id == current_user.id).first()
         if not admin_record:
             # user has role "admin" but no Admin row: no access
@@ -93,12 +106,34 @@ def fetch_videos(db: Session = Depends(get_db), current_user=Depends(get_current
         if not class_ids:
             return []
         videos = get_videos(db, class_ids=class_ids)
-    # Teacher / Student: adapt to your app (this assumes User has class_id)
-    elif current_user.role == "teacher" or current_user.role == "student":
-        user_class_id = getattr(current_user, "class_id", None)
-        if not user_class_id:
+    # Teacher: access videos from all classes in their college
+    elif user_role == "teacher":
+        # For teachers, we need to query the Teacher table to get their college
+        # Then find all classes that have students from the teacher's college
+        teacher_record = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
+        if not teacher_record:
             return []
-        videos = get_videos(db, class_ids=[user_class_id])
+        
+        # Get all class IDs that have students from the teacher's college
+        # This assumes that the classes associated with the teacher's college are those classes
+        # that have students from that college
+        classes_in_teacher_college = db.query(Student.class_id).filter(
+            Student.college_id == teacher_record.college_id
+        ).distinct().all()
+        
+        class_ids = [c.class_id for c in classes_in_teacher_college if c.class_id is not None]
+        if not class_ids:
+            return []
+        
+        videos = get_videos(db, class_ids=class_ids)
+    # Student: access videos from their assigned class
+    elif user_role == "student":
+        # For students, current_user is a Student instance from the Student table
+        # which has a class_id field
+        if hasattr(current_user, 'class_id') and current_user.class_id:
+            videos = get_videos(db, class_ids=[current_user.class_id])
+        else:
+            return []
     else:
         return []
 
