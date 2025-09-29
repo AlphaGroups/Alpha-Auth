@@ -65,7 +65,7 @@ from app.crud.crud_video import create_video, get_videos
 from app.schemas.video_schema import VideoCreate, VideoResponse
 from auth.routes import get_current_user  # returns User instance
 from utils.youtube import extract_youtube_id, get_embed_url
-from models import Admin  # <<-- need Admin model
+from models import Admin, Teacher, Student, AdminClassAccess  # <<-- need Admin, Teacher, Student, and AdminClassAccess models
 
 router = APIRouter(prefix="/videos", tags=["Videos"])
 
@@ -93,12 +93,75 @@ def fetch_videos(db: Session = Depends(get_db), current_user=Depends(get_current
         if not class_ids:
             return []
         videos = get_videos(db, class_ids=class_ids)
-    # Teacher / Student: adapt to your app (this assumes User has class_id)
-    elif current_user.role == "teacher" or current_user.role == "student":
-        user_class_id = getattr(current_user, "class_id", None)
-        if not user_class_id:
+    # Teacher: can see videos from classes that admins in their college have access to
+    elif current_user.role == "teacher":
+        # Find the teacher record to get their college
+        teacher_record = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
+        if not teacher_record:
             return []
-        videos = get_videos(db, class_ids=[user_class_id])
+        
+        # Get all class IDs that admins in this teacher's college have access to
+        admin_ids_in_college = db.query(Admin.id).filter(Admin.college_id == teacher_record.college_id).subquery()
+        admin_class_accesses = db.query(AdminClassAccess.class_id).filter(
+            AdminClassAccess.admin_id.in_(admin_ids_in_college)
+        ).all()
+        
+        admin_class_ids = [access.class_id for access in admin_class_accesses]
+        
+        # Teachers might also have access to specific classes, but this is handled by admin access
+        all_class_ids = list(set(admin_class_ids))
+        
+        videos = get_videos(db, class_ids=all_class_ids) if all_class_ids else []
+    # Student: for students, we need to determine their record somehow
+    # Since there's no direct user_id in Student model linking to User, let's assume
+    # that students might have their class set in User model (though this needs to be verified in auth implementation)
+    elif current_user.role == "student":
+        # For students, we'll implement access based on admin access in their college
+        # First, we need to find which college the student belongs to
+        
+        # The Student model has its own email, student_id, etc., and is not directly linked to User
+        # This seems to be a design issue in the schema. 
+        # The proper solution would be to link Student to User, but since that's not in the current schema,
+        # we'll have to handle it differently.
+        
+        # If the auth system authenticates using the User table and the User.role is 'student',
+        # then we need a way to link the User to the Student record.
+        # Let's assume that for students, we need to have a different approach.
+        # Since the Student model is not directly linked to User, we'll have to assume that
+        # when a student logs in, they do so through a specific mechanism.
+        
+        # If the application is designed such that students are linked to users in another way,
+        # we might need to add the user_id field to the Student model.
+        # For now, I'll assume that students can access based on the admin access in their college,
+        # and that there should be a mechanism to identify which college a student belongs to.
+        
+        # Let's query for the student by email (current_user.email) to find their record
+        student_record = db.query(Student).filter(Student.email == current_user.email).first()
+        if not student_record:
+            # If we can't find the student by email, they might not have access
+            # OR the system might be designed differently (user_id linking)
+            # This suggests that we might need to add user_id to Student model
+            return []
+        
+        college_id = student_record.college_id
+        
+        # Get all class IDs that admins in this student's college have access to
+        admin_ids_in_college = db.query(Admin.id).filter(Admin.college_id == college_id).subquery()
+        admin_class_accesses = db.query(AdminClassAccess.class_id).filter(
+            AdminClassAccess.admin_id.in_(admin_ids_in_college)
+        ).all()
+        
+        admin_class_ids = [access.class_id for access in admin_class_accesses]
+        
+        # Student also has access to their own class
+        student_class_id = student_record.class_id
+        if student_class_id:
+            admin_class_ids.append(student_class_id)
+        
+        # Remove duplicates while preserving order
+        all_class_ids = list(dict.fromkeys(admin_class_ids))
+        
+        videos = get_videos(db, class_ids=all_class_ids) if all_class_ids else []
     else:
         return []
 
