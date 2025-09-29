@@ -40,7 +40,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",  # local dev
         "https://alpha-auth.onrender.com",
-        "https://monorepo-web-liard-six.vercel.app"  # production frontend
+        "https://monorepo-web-liard-six.vercel.app",  # production frontend
+        "https://monorepo-lms.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
