@@ -115,11 +115,11 @@ def fetch_videos(db: Session = Depends(get_db), current_user=Depends(get_current
         
         # Get videos from admin-accessible classes, filtered by teacher's subject
         # We assume that video 'category' field is used for subject
-        if admin_class_ids:
-            videos = db.query(Video).filter(
-                Video.class_id.in_(admin_class_ids),
-                Video.category == teacher_record.subject  # Filter by teacher's subject
-            ).all()
+        if admin_class_ids and teacher_record.subject:
+            # Use the existing get_videos function to maintain consistency
+            all_videos = get_videos(db, class_ids=admin_class_ids)
+            # Filter by teacher's subject
+            videos = [v for v in all_videos if v.category == teacher_record.subject]
         else:
             videos = []
     # Student: for students, we need to determine their record somehow
@@ -167,8 +167,8 @@ def fetch_videos(db: Session = Depends(get_db), current_user=Depends(get_current
         # Students can access all videos from their own class (regardless of subject)
         student_class_id = student_record.class_id
         if student_class_id:
-            # Filter videos by the student's class
-            videos = db.query(Video).filter(Video.class_id == student_class_id).all()
+            # Use the existing get_videos function to maintain consistency
+            videos = get_videos(db, class_ids=[student_class_id])
         else:
             # If student doesn't have a class_id, they have no access
             return []
