@@ -39,6 +39,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",  # local dev
+        "https://alpha-auth.onrender.com",
         "https://monorepo-web-liard-six.vercel.app"  # production frontend
     ],
     allow_credentials=True,
