@@ -65,7 +65,7 @@ from app.crud.crud_video import create_video, get_videos
 from app.schemas.video_schema import VideoCreate, VideoResponse
 from auth.routes import get_current_user  # returns User instance
 from utils.youtube import extract_youtube_id, get_embed_url
-from models import Admin, Teacher, Student, AdminClassAccess, Video  # <<-- need Admin, Teacher, Student, AdminClassAccess, and Video models
+from models import Admin, Teacher, Student, AdminClassAccess, Video, User  # <<-- need Admin, Teacher, Student, AdminClassAccess, Video, and User models
 
 router = APIRouter(prefix="/videos", tags=["Videos"])
 
@@ -80,11 +80,24 @@ def upload_video(video: VideoCreate, db: Session = Depends(get_db), current_user
 
 @router.get("/", response_model=list[VideoResponse])
 def fetch_videos(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    # Determine the role by checking the type of current_user
+    # If current_user is Student, it's a student
+    # If current_user is User or has a role attribute, check that
+    user_role = getattr(current_user, 'role', None)
+    if user_role is None:
+        # If there's no role attribute, check if it's a Student object
+        if isinstance(current_user, Student):
+            user_role = "student"
+        elif isinstance(current_user, Teacher):
+            user_role = "teacher" 
+        elif isinstance(current_user, Admin):
+            user_role = "admin"
+    
     # Superadmin -> all videos
-    if current_user.role == "superadmin":
+    if user_role == "superadmin":
         videos = get_videos(db)
     # Admin -> lookup Admin row & its class_accesses
-    elif current_user.role == "admin":
+    elif user_role == "admin":
         admin_record = db.query(Admin).filter(Admin.user_id == current_user.id).first()
         if not admin_record:
             # user has role "admin" but no Admin row: no access
@@ -94,7 +107,7 @@ def fetch_videos(db: Session = Depends(get_db), current_user=Depends(get_current
             return []
         videos = get_videos(db, class_ids=class_ids)
     # Teacher: can see videos from their subject and class
-    elif current_user.role == "teacher":
+    elif user_role == "teacher":
         # Find the teacher record to get their subject and college
         teacher_record = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
         if not teacher_record:
@@ -122,55 +135,23 @@ def fetch_videos(db: Session = Depends(get_db), current_user=Depends(get_current
             videos = [v for v in all_videos if v.category == teacher_record.subject]
         else:
             videos = []
-    # Student: for students, we need to determine their record somehow
-    # Since there's no direct user_id in Student model linking to User, let's assume
-    # that students might have their class set in User model (though this needs to be verified in auth implementation)
-    elif current_user.role == "student":
-        # For students, we'll implement access based on admin access in their college
-        # First, we need to find which college the student belongs to
-        
-        # The Student model has its own email, student_id, etc., and is not directly linked to User
-        # This seems to be a design issue in the schema. 
-        # The proper solution would be to link Student to User, but since that's not in the current schema,
-        # we'll have to handle it differently.
-        
-        # If the auth system authenticates using the User table and the User.role is 'student',
-        # then we need a way to link the User to the Student record.
-        # Let's assume that for students, we need to have a different approach.
-        # Since the Student model is not directly linked to User, we'll have to assume that
-        # when a student logs in, they do so through a specific mechanism.
-        
-        # If the application is designed such that students are linked to users in another way,
-        # we might need to add the user_id field to the Student model.
-        # For now, I'll assume that students can access based on the admin access in their college,
-        # and that there should be a mechanism to identify which college a student belongs to.
-        
-        # Let's query for the student by email (current_user.email) to find their record
-        student_record = db.query(Student).filter(Student.email == current_user.email).first()
-        
-        # If we can't find the student by email, try looking by student_id if it might match the email prefix
-        # This is common when student_id@college.edu is used as the email format
-        if not student_record and current_user.email:
-            # Extract potential student_id from email like '1@college.edu' -> '1'
-            try:
-                student_id_from_email = current_user.email.split('@')[0]
-                student_record = db.query(Student).filter(Student.student_id == student_id_from_email).first()
-            except:
-                # If email parsing fails, continue with no student_record
-                pass
-        
-        if not student_record:
-            # If we still can't find the student record, they might not have access
-            # OR the system might be designed differently
-            return []
-        
-        # Students can access all videos from their own class (regardless of subject)
-        student_class_id = student_record.class_id
-        if student_class_id:
-            # Use the existing get_videos function to maintain consistency
-            videos = get_videos(db, class_ids=[student_class_id])
-        else:
-            # If student doesn't have a class_id, they have no access
+    # Student: current_user is actually the Student object itself
+    elif user_role == "student":
+        try:
+            # In this case, current_user IS the student record since get_current_user returns Student
+            student_record = current_user
+            
+            # Students can access all videos from their own class (regardless of subject)
+            student_class_id = student_record.class_id
+            if student_class_id:
+                # Use the existing get_videos function to maintain consistency
+                videos = get_videos(db, class_ids=[student_class_id])
+            else:
+                # If student doesn't have a class_id, they have no access
+                return []
+        except Exception as e:
+            # If there's any error in the student access logic, return empty list
+            print(f"Error in student video access: {str(e)}")
             return []
     else:
         return []
