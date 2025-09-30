@@ -10,7 +10,8 @@ venv/
 # Ignore environment variables file
 .env
 .env.development
-.env.production
+.env.development.backup
+.env.production.backup
 *.env.backup
 
 # VSCode and JetBrains IDE settings (optional)
