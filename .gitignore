@@ -10,6 +10,7 @@ venv/
 # Ignore environment variables file
 .env
 .env.development
+.env.production
 .env.development.backup
 .env.production.backup
 *.env.backup
