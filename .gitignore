@@ -21,3 +21,6 @@ venv/
 # OS-specific files
 .DS_Store
 Thumbs.db
+
+# Secret replacement files
+replace_secrets.txt

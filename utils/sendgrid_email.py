@@ -31,6 +31,11 @@ import os
 from dotenv import load_dotenv
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -38,29 +43,40 @@ SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 EMAIL_FROM = os.getenv("EMAIL_FROM")
 
 def send_email(to_email: str, subject: str, html: str, plain_text: str = None) -> bool:
+    """
+    Send email using SendGrid in production, with fallback to console in development
+    """
+    if not EMAIL_FROM:
+        logger.error("EMAIL_FROM not configured")
+        return False
+    
+    if not SENDGRID_API_KEY:
+        # Development/Testing mode - log instead of sending
+        logger.info(f"📧 MOCK EMAIL (no API key) - TO: {to_email}, SUBJECT: {subject}")
+        logger.info(f"   HTML content preview: {html[:100]}...")
+        return True  # Return success in development mode
+    
+    # Production mode - actually send email
     try:
-        print("📤 Sending email via SendGrid...")
-        print("FROM:", EMAIL_FROM)
-        print("TO:", to_email)
-        print("SUBJECT:", subject)
-
         message = Mail(
             from_email=EMAIL_FROM,
             to_emails=to_email,
             subject=subject,
-            
-            plain_text_content=plain_text or "View this email in HTML format.",
+            plain_text_content=plain_text or "Please view this email in HTML format.",
             html_content=html
         )
 
         sg = SendGridAPIClient(SENDGRID_API_KEY)
         response = sg.send(message)
 
-        print("✅ STATUS CODE:", response.status_code)
-        print("✅ RESPONSE BODY:", response.body.decode() if response.body else "No body")
-
-        return response.status_code < 400
+        if response.status_code < 400:
+            logger.info(f"✅ Email sent successfully to {to_email}")
+            return True
+        else:
+            logger.error(f"❌ Failed to send email. Status: {response.status_code}")
+            logger.error(f"Response: {response.body}")
+            return False
 
     except Exception as e:
-        print("❌ SendGrid Email Error:", e)
+        logger.error(f"❌ SendGrid error: {str(e)}")
         return False
