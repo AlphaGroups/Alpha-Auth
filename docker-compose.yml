@@ -31,8 +31,16 @@ services:
     depends_on:
       db:
         condition: service_healthy   # ✅ wait for MySQL to be ready
+    environment:
+      - ENV=development
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=user
+      - DB_PASSWORD=password
+      - DB_NAME=auth_db
+      - DATABASE_URL=mysql+pymysql://user:password@db:3306/auth_db
     env_file:
-      - .env
+      - .env.development
 
 volumes:   # 👈 you missed this earlier
   mysql_data:
