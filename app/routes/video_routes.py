@@ -65,7 +65,7 @@ from app.crud.crud_video import create_video, get_videos
 from app.schemas.video_schema import VideoCreate, VideoResponse
 from auth.routes import get_current_user  # returns User instance (for admin/teacher) or Student instance (for students)
 from utils.youtube import extract_youtube_id, get_embed_url
-from models import Admin, Teacher, Student, Class, Video  # <<-- need all models
+from models import Admin, Teacher, Student, AdminClassAccess, Video, User  # <<-- need Admin, Teacher, Student, AdminClassAccess, Video, and User models
 
 router = APIRouter(prefix="/videos", tags=["Videos"])
 
@@ -80,18 +80,18 @@ def upload_video(video: VideoCreate, db: Session = Depends(get_db), current_user
 
 @router.get("/", response_model=list[VideoResponse])
 def fetch_videos(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    # Determine the role based on the type of object
+    # Determine the role by checking the type of current_user
+    # If current_user is Student, it's a student
+    # If current_user is User or has a role attribute, check that
     user_role = getattr(current_user, 'role', None)
     if user_role is None:
-        # For Student objects, the role should be "student"
+        # If there's no role attribute, check if it's a Student object
         if isinstance(current_user, Student):
             user_role = "student"
-        else:
-            return []
-    
-    # Convert enum to string if needed
-    if hasattr(user_role, 'value'):
-        user_role = user_role.value
+        elif isinstance(current_user, Teacher):
+            user_role = "teacher" 
+        elif isinstance(current_user, Admin):
+            user_role = "admin"
     
     # Superadmin -> all videos
     if user_role == "superadmin":
@@ -106,33 +106,52 @@ def fetch_videos(db: Session = Depends(get_db), current_user=Depends(get_current
         if not class_ids:
             return []
         videos = get_videos(db, class_ids=class_ids)
-    # Teacher: access videos from all classes in their college
+    # Teacher: can see videos from their subject and class
     elif user_role == "teacher":
-        # For teachers, we need to query the Teacher table to get their college
-        # Then find all classes that have students from the teacher's college
+        # Find the teacher record to get their subject and college
         teacher_record = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
         if not teacher_record:
             return []
         
-        # Get all class IDs that have students from the teacher's college
-        # This assumes that the classes associated with the teacher's college are those classes
-        # that have students from that college
-        classes_in_teacher_college = db.query(Student.class_id).filter(
-            Student.college_id == teacher_record.college_id
-        ).distinct().all()
+        # For teachers, they should only see videos from their subject in their assigned class
+        # Since Teacher model doesn't have class_id directly, we might need to infer from context
+        # For now, we'll get all videos from classes that admins in their college have access to,
+        # but filter by the teacher's subject (using category field in videos)
         
-        class_ids = [c.class_id for c in classes_in_teacher_college if c.class_id is not None]
-        if not class_ids:
-            return []
+        # Get all class IDs that admins in this teacher's college have access to
+        admin_ids_in_college = db.query(Admin.id).filter(Admin.college_id == teacher_record.college_id).subquery()
+        admin_class_accesses = db.query(AdminClassAccess.class_id).filter(
+            AdminClassAccess.admin_id.in_(admin_ids_in_college)
+        ).all()
         
-        videos = get_videos(db, class_ids=class_ids)
-    # Student: access videos from their assigned class
-    elif user_role == "student":
-        # For students, current_user is a Student instance from the Student table
-        # which has a class_id field
-        if hasattr(current_user, 'class_id') and current_user.class_id:
-            videos = get_videos(db, class_ids=[current_user.class_id])
+        admin_class_ids = [access.class_id for access in admin_class_accesses]
+        
+        # Get videos from admin-accessible classes, filtered by teacher's subject
+        # We assume that video 'category' field is used for subject
+        if admin_class_ids and teacher_record.subject:
+            # Use the existing get_videos function to maintain consistency
+            all_videos = get_videos(db, class_ids=admin_class_ids)
+            # Filter by teacher's subject
+            videos = [v for v in all_videos if v.category == teacher_record.subject]
         else:
+            videos = []
+    # Student: current_user is actually the Student object itself
+    elif user_role == "student":
+        try:
+            # In this case, current_user IS the student record since get_current_user returns Student
+            student_record = current_user
+            
+            # Students can access all videos from their own class (regardless of subject)
+            student_class_id = student_record.class_id
+            if student_class_id:
+                # Use the existing get_videos function to maintain consistency
+                videos = get_videos(db, class_ids=[student_class_id])
+            else:
+                # If student doesn't have a class_id, they have no access
+                return []
+        except Exception as e:
+            # If there's any error in the student access logic, return empty list
+            print(f"Error in student video access: {str(e)}")
             return []
     else:
         return []
