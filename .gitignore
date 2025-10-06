@@ -9,7 +9,8 @@ venv/
 
 # Ignore environment variables file
 .env
-
+.env.development
+.env.production
 # VSCode and JetBrains IDE settings (optional)
 .vscode/
 .idea/
