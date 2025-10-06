@@ -6,12 +6,11 @@ from auth.jwt import create_access_token
 from database import SessionLocal
 from models import User
 from utils.security import hash_password, verify_password
-from utils.token import generate_reset_token, verify_reset_token
+from utils.reset_token import generate_reset_token, verify_reset_token
 
-from utils.email import send_email  
 from app.templates import render_template
-from utils.sendgrid_email import send_email
-from utils.token import generate_reset_token
+from utils.brevo_email import send_email
+from utils.reset_token import generate_reset_token
 
 router = APIRouter()
 
@@ -109,11 +108,11 @@ def register(data: RegisterInput, db: Session = Depends(get_db)):
         domain=domain,
     )
 
-    # ✅ Send email if needed — example:
-    # subject = "Welcome to FBOrganization"
-    # success = send_email(to_email=new_user.email, subject=subject, html=html)
-    # if not success:
-    #     raise HTTPException(status_code=500, detail="Failed to send email")
+    # ✅ Send welcome email to new user
+    subject = "Welcome to MI-ware - Account Created Successfully!"
+    success = send_email(to_email=new_user.email, subject=subject, html=html)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to send welcome email")
 
     return {"message": "User registered successfully"}
 

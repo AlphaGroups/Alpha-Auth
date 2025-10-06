@@ -3,7 +3,9 @@ from dotenv import load_dotenv
 from auth.routes import router as auth_router  # ✅ path relative to root
 from database import Base, engine
 from models import User
-# load_dotenv()
+
+# Load development environment variables
+load_dotenv('.env.development')
 
 # app = FastAPI()
 # app.include_router(auth_router, prefix="/api")
