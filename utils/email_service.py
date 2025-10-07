@@ -1,6 +1,9 @@
 import os
-import sys
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
+from typing import Optional
 
 # Load environment variables based on environment
 if os.getenv("APP_ENV") == "production":
@@ -11,88 +14,91 @@ else:
     # For development, load from .env.development
     load_dotenv(".env.development")
 
-# Check which email service to use
-BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+# SMTP Configuration from environment
+SMTP_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("EMAIL_PORT", "587"))
+SMTP_USER = os.getenv("EMAIL_USER", "")
+SMTP_PASSWORD = os.getenv("EMAIL_PASS", "")
+EMAIL_FROM = os.getenv("EMAIL_FROM", "noreply@alphagroups.com")
+EMAIL_FROM_NAME = os.getenv("EMAIL_FROM_NAME", "Alpha Groups Notifications")
 
 
-def send_email(to_email: str, subject: str, html: str, plain_text: str = None) -> bool:
+def send_smtp_email(to_email: str, subject: str, html: str, plain_text: str = None) -> bool:
     """
-    Unified email sending function that uses Brevo API if available, otherwise falls back to SMTP
+    Send email using SMTP configuration
     """
-    print("Unified email sender activated...")
-    
-    # Import smtp_email module
-    import importlib.util
-    import os
-    
-    smtp_email_path = os.path.join(os.path.dirname(__file__), "smtp_email.py")
-    smtp_spec = importlib.util.spec_from_file_location("smtp_email", smtp_email_path)
-    smtp_module = importlib.util.module_from_spec(smtp_spec)
-    smtp_spec.loader.exec_module(smtp_module)
+    try:
+        print("Sending email via SMTP...")
+        print("FROM:", f"{EMAIL_FROM_NAME} <{EMAIL_FROM}>")
+        print("TO:", to_email)
+        print("SUBJECT:", subject)
 
-    send_smtp_email = smtp_module.send_smtp_email
-    is_smtp_configured = smtp_module.is_smtp_configured
-
-    # Check if Brevo API is configured (uncommented in .env)
-    if BREVO_API_KEY:
-        # For API approach, we'll use a direct request since no dedicated module exists
-        # If we had a brevo_email module, we would import it here
-        # For now, we'll fallback to a direct implementation if API is configured
-        print("API key detected, attempting Brevo API call...")
-        
-        import requests
-        
-        # Prepare email using Brevo API
-        email_from = os.getenv("EMAIL_FROM", "noreply@alphagroups.com")
-        email_from_name = os.getenv("EMAIL_FROM_NAME", "Alpha Groups Notifications")
-        
-        url = "https://api.brevo.com/v3/smtp/email"
-        
-        payload = {
-            "sender": {
-                "name": email_from_name,
-                "email": email_from
-            },
-            "to": [
-                {
-                    "email": to_email
-                }
-            ],
-            "subject": subject,
-            "htmlContent": html,
-            "textContent": plain_text or "View this email in HTML format."
-        }
-
-        headers = {
-            "accept": "application/json",
-            "content-type": "application/json",
-            "api-key": BREVO_API_KEY
-        }
-
-        try:
-            response = requests.post(url, json=payload, headers=headers)
-            print("Brevo API STATUS CODE:", response.status_code)
-            if response.text:
-                print("Brevo API RESPONSE:", response.text)
-            return response.status_code < 400
-        except Exception as e:
-            print("Brevo API Error:", e)
+        # Check if required SMTP settings are configured
+        if not SMTP_USER or not SMTP_PASSWORD:
+            print("ERROR: SMTP_USER or SMTP_PASSWORD not configured in environment")
             return False
-    elif is_smtp_configured():
-        print("Using SMTP for email delivery...")
-        return send_smtp_email(to_email, subject, html, plain_text)
-    else:
-        print("ERROR: No email service configured (neither Brevo API nor SMTP)")
+
+        # Create message
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = f"{EMAIL_FROM_NAME} <{EMAIL_FROM}>"
+        msg['To'] = to_email
+
+        # Create both plain text and HTML versions
+        if plain_text:
+            text_part = MIMEText(plain_text, 'plain')
+            msg.attach(text_part)
+        
+        html_part = MIMEText(html, 'html')
+        msg.attach(html_part)
+
+        # Connect to server and send email
+        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
+        server.set_debuglevel(0)  # Set to 1 to see SMTP communication
+        try:
+            server.starttls()  # Enable encryption
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.send_message(msg)
+        except smtplib.SMTPAuthenticationError:
+            print("SMTP Error: Authentication failed. Check your EMAIL_USER and EMAIL_PASS")
+            return False
+        except smtplib.SMTPRecipientsRefused:
+            print("SMTP Error: Recipients were refused by the server")
+            return False
+        except smtplib.SMTPServerDisconnected:
+            print("SMTP Error: Server unexpectedly disconnected")
+            return False
+        except Exception as e:
+            print(f"SMTP Error during email sending: {str(e)}")
+            return False
+        finally:
+            try:
+                server.quit()
+            except:
+                pass  # Ignore errors during quit
+
+        print("Email sent successfully via SMTP")
+        return True
+
+    except Exception as e:
+        print("SMTP Email Error:", str(e))
         return False
 
 
+def is_smtp_configured() -> bool:
+    """
+    Check if SMTP is properly configured
+    """
+    return bool(SMTP_USER and SMTP_PASSWORD)
+
+
 if __name__ == "__main__":
-    # Test the unified email function
+    # Test SMTP email functionality
     test_email = os.getenv("TEST_EMAIL", "test@example.com")
-    success = send_email(
+    success = send_smtp_email(
         to_email=test_email,
-        subject="Unified Email Test",
-        html="<h1>Hello Alpha Groups!</h1><p>This is a test email sent via the configured method.</p>",
-        plain_text="Hello Alpha Groups!\n\nThis is a test email sent via the configured method."
+        subject="SMTP Test",
+        html="<h1>Hello Alpha Groups!</h1><p>This is a test email sent via SMTP.</p>",
+        plain_text="Hello Alpha Groups!\n\nThis is a test email sent via SMTP."
     )
-    print("Unified Result:", "Sent" if success else "Failed")
+    print("SMTP Result:", "Sent" if success else "Failed")
