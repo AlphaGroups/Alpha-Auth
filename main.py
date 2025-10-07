@@ -17,8 +17,14 @@ from app.routes.college import router as college_router
 # Import email functionality
 from utils.email_service import send_email
 
-# Load environment variables
-load_dotenv()
+# Load environment variables based on environment
+if os.getenv("APP_ENV") == "production":
+    # In production, environment variables are set by Render directly
+    # So we don't need to load from .env file
+    pass
+else:
+    # For development, load from .env.development
+    load_dotenv(".env.development")
 
 # Create DB tables if not exist
 Base.metadata.create_all(bind=engine)

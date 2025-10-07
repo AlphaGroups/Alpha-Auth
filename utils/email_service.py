@@ -2,8 +2,14 @@ import os
 import sys
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv(".env.development")
+# Load environment variables based on environment
+if os.getenv("APP_ENV") == "production":
+    # In production, environment variables are set by Render directly
+    # So we don't need to load from .env file
+    pass
+else:
+    # For development, load from .env.development
+    load_dotenv(".env.development")
 
 # Check which email service to use
 BREVO_API_KEY = os.getenv("BREVO_API_KEY")

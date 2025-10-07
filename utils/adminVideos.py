@@ -1,17 +1,14 @@
 
 from sqlalchemy.orm import Session
-from models import AdminClassAccess  # <-- use the class, not 'admin_class_access'
+from models import AdminClassAccess
 
 
 def grant_admin_class_access(db: Session, admin_id: int, class_ids: list[int]):
-    # Remove old access
-    db.execute(
-        AdminClassAccess.delete().where(AdminClassAccess.c.admin_id == admin_id)
-    )
-
+    # Remove old access for this admin
+    db.query(AdminClassAccess).filter(AdminClassAccess.admin_id == admin_id).delete(synchronize_session=False)
+    
     # Add new access
     for class_id in class_ids:
-        db.execute(
-            AdminClassAccess.insert().values(admin_id=admin_id, class_id=class_id)
-        )
+        access = AdminClassAccess(admin_id=admin_id, class_id=class_id)
+        db.add(access)
     db.commit()

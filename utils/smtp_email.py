@@ -5,8 +5,14 @@ from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 from typing import Optional
 
-# Load environment variables
-load_dotenv(".env.development")
+# Load environment variables based on environment
+if os.getenv("APP_ENV") == "production":
+    # In production, environment variables are set by Render directly
+    # So we don't need to load from .env file
+    pass
+else:
+    # For development, load from .env.development
+    load_dotenv(".env.development")
 
 # SMTP Configuration from environment
 SMTP_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
@@ -47,10 +53,29 @@ def send_smtp_email(to_email: str, subject: str, html: str, plain_text: str = No
         msg.attach(html_part)
 
         # Connect to server and send email
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
+        server.set_debuglevel(0)  # Set to 1 to see SMTP communication
+        try:
             server.starttls()  # Enable encryption
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.send_message(msg)
+        except smtplib.SMTPAuthenticationError:
+            print("SMTP Error: Authentication failed. Check your EMAIL_USER and EMAIL_PASS")
+            return False
+        except smtplib.SMTPRecipientsRefused:
+            print("SMTP Error: Recipients were refused by the server")
+            return False
+        except smtplib.SMTPServerDisconnected:
+            print("SMTP Error: Server unexpectedly disconnected")
+            return False
+        except Exception as e:
+            print(f"SMTP Error during email sending: {str(e)}")
+            return False
+        finally:
+            try:
+                server.quit()
+            except:
+                pass  # Ignore errors during quit
 
         print("Email sent successfully via SMTP")
         return True

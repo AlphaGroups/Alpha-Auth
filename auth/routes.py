@@ -8,7 +8,11 @@ from typing import Optional, List
 from datetime import timedelta
 
 from dotenv import load_dotenv
-load_dotenv()
+# Load environment variables based on environment
+if os.getenv("APP_ENV") == "production":
+    pass  # Environment variables are already loaded by Render
+else:
+    load_dotenv()
 
 from database import get_db, SessionLocal
 from models import User, Student, RoleEnum

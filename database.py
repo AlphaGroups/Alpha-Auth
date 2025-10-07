@@ -33,12 +33,18 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from dotenv import load_dotenv
 
-# Load env file (local only, Render injects env vars automatically)
-env = os.getenv("ENV", "development")
-if env == "production":
-    load_dotenv(".env.production")
+# Load environment variables based on environment
+# In production, environment variables are set by Render directly
+# So we don't need to load from .env files
+if os.getenv("APP_ENV") == "production":
+    pass  # Environment variables are already loaded by Render
 else:
-    load_dotenv(".env.development")
+    # For development, load from appropriate .env file
+    env = os.getenv("ENV", "development")
+    if env == "production":
+        load_dotenv(".env.production")
+    else:
+        load_dotenv(".env.development")
 
 # ✅ In production, use DATABASE_URL directly
 DATABASE_URL = os.getenv("DATABASE_URL")
