@@ -14,6 +14,9 @@ from app.routes.teacher import router as teacher_router
 from app.routes.student import router as student_router
 from app.routes.college import router as college_router
 
+# Import email functionality
+from utils.email_service import send_email
+
 # Load environment variables
 load_dotenv()
 
@@ -55,6 +58,7 @@ def startup_tasks():
         admin_email = os.getenv("ADMIN_EMAIL")
         admin_pass = os.getenv("ADMIN_PASS")
         admin_user = os.getenv("ADMIN_USER", "Super Admin")
+        admin_mobile = os.getenv("ADMIN_MOBILE", "")
 
         if admin_email and admin_pass:
             existing = db.query(User).filter(User.email == admin_email).first()
@@ -70,10 +74,60 @@ def startup_tasks():
                     email=admin_email,
                     hashed_password=hash_password(admin_pass),
                     role=RoleEnum.superadmin,
+                    mobile=admin_mobile  # Add mobile if available
                 )
                 db.add(superadmin)
                 db.commit()
                 print("✅ Superadmin created:", admin_email)
+                
+                # Send welcome email to the admin
+                try:
+                    html_content = f"""
+                    <html>
+                    <body>
+                        <h2>Welcome to Alpha Groups, {first_name}!</h2>
+                        <p>Your superadmin account has been successfully created.</p>
+                        <p><strong>Account Details:</strong></p>
+                        <ul>
+                            <li><strong>Email:</strong> {admin_email}</li>
+                            <li><strong>Role:</strong> Super Admin</li>
+                            <li><strong>Temporary Password:</strong> {admin_pass}</li>
+                        </ul>
+                        <p>Please change your password after your first login for security.</p>
+                        <p>Thank you for using Alpha Groups platform!</p>
+                    </body>
+                    </html>
+                    """
+                    
+                    plain_text = f"""
+                    Welcome to Alpha Groups, {first_name}!
+                    
+                    Your superadmin account has been successfully created.
+                    
+                    Account Details:
+                    - Email: {admin_email}
+                    - Role: Super Admin
+                    - Temporary Password: {admin_pass}
+                    
+                    Please change your password after your first login for security.
+                    Thank you for using Alpha Groups platform!
+                    """
+                    
+                    success = send_email(
+                        to_email=admin_email,
+                        subject="Welcome - Super Admin Account Created",
+                        html=html_content,
+                        plain_text=plain_text
+                    )
+                    
+                    if success:
+                        print(f"✅ Welcome email sent to admin: {admin_email}")
+                    else:
+                        print(f"❌ Failed to send welcome email to admin: {admin_email}")
+                        
+                except Exception as e:
+                    print(f"❌ Error sending welcome email: {str(e)}")
+                    
             else:
                 print("ℹ️ Superadmin already exists:", admin_email)
         else:

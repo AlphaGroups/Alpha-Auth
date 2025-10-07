@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from models import User, RoleEnum, Teacher
 from utils.security import hash_password
 from app.schemas.teacher import TeacherCreate
+from utils.email_service import send_email
 
 
 def create_teacher(
@@ -50,5 +51,59 @@ def create_teacher(
     db.add(teacher)
     db.commit()
     db.refresh(teacher)
+
+    # Send welcome email to the teacher
+    try:
+        # Extract first name from full name for personalization
+        parts = teacher_data.full_name.strip().split()
+        first_name = parts[0] if parts else teacher_data.full_name
+
+        html_content = f"""
+        <html>
+        <body>
+            <h2>Welcome to Alpha Groups, {first_name}!</h2>
+            <p>Your teacher account has been successfully created.</p>
+            <p><strong>Account Details:</strong></p>
+            <ul>
+                <li><strong>Email:</strong> {teacher_data.email}</li>
+                <li><strong>Role:</strong> Teacher</li>
+                <li><strong>Subject:</strong> {teacher_data.subject}</li>
+                <li><strong>Temporary Password:</strong> {teacher_data.password}</li>
+            </ul>
+            <p>Please change your password after your first login for security.</p>
+            <p>Thank you for using Alpha Groups platform!</p>
+        </body>
+        </html>
+        """
+        
+        plain_text = f"""
+        Welcome to Alpha Groups, {first_name}!
+        
+        Your teacher account has been successfully created.
+        
+        Account Details:
+        - Email: {teacher_data.email}
+        - Role: Teacher
+        - Subject: {teacher_data.subject}
+        - Temporary Password: {teacher_data.password}
+        
+        Please change your password after your first login for security.
+        Thank you for using Alpha Groups platform!
+        """
+        
+        success = send_email(
+            to_email=teacher_data.email,
+            subject="Welcome - Teacher Account Created",
+            html=html_content,
+            plain_text=plain_text
+        )
+        
+        if success:
+            print(f"✅ Welcome email sent to teacher: {teacher_data.email}")
+        else:
+            print(f"❌ Failed to send welcome email to teacher: {teacher_data.email}")
+            
+    except Exception as e:
+        print(f"❌ Error sending welcome email: {str(e)}")
 
     return teacher

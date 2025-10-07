@@ -3,6 +3,8 @@ services:
     image: mysql:8.0
     container_name: mysql
     restart: always
+    env_file:
+      - .env.development
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
@@ -12,8 +14,16 @@ services:
       - "3308:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-    healthcheck:   # ✅ ensures MySQL is ready
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD}"]
+    healthcheck: # ✅ ensures MySQL is ready
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-p${DB_ROOT_PASSWORD}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,9 +40,9 @@ services:
       - .:/app
     depends_on:
       db:
-        condition: service_healthy   # ✅ wait for MySQL to be ready
+        condition: service_healthy # ✅ wait for MySQL to be ready
     env_file:
-      - .env
+      - .env.development
 
-volumes:   # 👈 you missed this earlier
+volumes: # 👈 you missed this earlier
   mysql_data:

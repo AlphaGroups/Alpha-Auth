@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from models import Admin, College, User, RoleEnum
 from utils.security import hash_password
 from app.schemas.College_Admin import AdminCreate
+from utils.email_service import send_email
 
 def create_admin(db: Session, admin_data: AdminCreate):
     # Check if college exists
@@ -41,6 +42,60 @@ def create_admin(db: Session, admin_data: AdminCreate):
     db.add(new_admin)
     db.commit()
     db.refresh(new_admin)
+
+    # Send welcome email to the admin
+    try:
+        # Extract first name from full name for personalization
+        parts = admin_data.full_name.strip().split()
+        first_name = parts[0] if parts else admin_data.full_name
+
+        html_content = f"""
+        <html>
+        <body>
+            <h2>Welcome to Alpha Groups, {first_name}!</h2>
+            <p>Your admin account has been successfully created.</p>
+            <p><strong>Account Details:</strong></p>
+            <ul>
+                <li><strong>Email:</strong> {admin_data.email}</li>
+                <li><strong>Role:</strong> Admin</li>
+                <li><strong>College:</strong> {admin_data.college_name}</li>
+                <li><strong>Temporary Password:</strong> {admin_data.password}</li>
+            </ul>
+            <p>Please change your password after your first login for security.</p>
+            <p>Thank you for using Alpha Groups platform!</p>
+        </body>
+        </html>
+        """
+        
+        plain_text = f"""
+        Welcome to Alpha Groups, {first_name}!
+        
+        Your admin account has been successfully created.
+        
+        Account Details:
+        - Email: {admin_data.email}
+        - Role: Admin
+        - College: {admin_data.college_name}
+        - Temporary Password: {admin_data.password}
+        
+        Please change your password after your first login for security.
+        Thank you for using Alpha Groups platform!
+        """
+        
+        success = send_email(
+            to_email=admin_data.email,
+            subject="Welcome - Admin Account Created",
+            html=html_content,
+            plain_text=plain_text
+        )
+        
+        if success:
+            print(f"✅ Welcome email sent to admin: {admin_data.email}")
+        else:
+            print(f"❌ Failed to send welcome email to admin: {admin_data.email}")
+            
+    except Exception as e:
+        print(f"❌ Error sending welcome email: {str(e)}")
 
     return new_admin
 

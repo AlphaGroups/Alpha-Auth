@@ -16,7 +16,7 @@ from utils.security import hash_password, verify_password
 from utils.token import verify_token
 from utils.reset_token import generate_reset_token , verify_reset_token
 from app.templates import render_template
-from utils.sendgrid_email import send_email
+from utils.email_service import send_email
 from auth.jwt import create_access_token, verify_token
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
