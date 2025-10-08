@@ -18,6 +18,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files
 COPY . .
 
+# Run initialization during build process to ensure essential data exists
+# This will attempt to connect to the DB and seed classes if they don't exist
+RUN python init_db.py || echo "Database not available during build, classes will be seeded at startup"
+
 # Expose FastAPI port
 EXPOSE 10000
 
