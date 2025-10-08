@@ -198,3 +198,13 @@ Re-login:
 
 
 Copy the new tunnel URL it shows (something like https://abcd1234-9080.inc1.devtunnels.ms) and update it in your frontend .env (instead of the old one).
+
+
+
+
+# postgress
+##  cmd to activate and connect
+
+psql "postgresql://alpha_auth_db_user:62uWSEDbxlXuGHqbrtIN7MC91F8QSnyK@dpg-d3d2qq8gjchc739lfrsg-a.singapore-postgres.render.com/alpha_auth_db"
+
+\dt (to show tables)
