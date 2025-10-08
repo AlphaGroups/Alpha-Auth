@@ -26,9 +26,6 @@ else:
     # For development, load from .env.development
     load_dotenv(".env.development")
 
-# Create DB tables if not exist
-Base.metadata.create_all(bind=engine)
-
 app = FastAPI()
 
 # Include routes
@@ -58,6 +55,9 @@ app.add_middleware(
 # ---------- Startup event ----------
 @app.on_event("startup")
 def startup_tasks():
+    # Create DB tables if not exist (moved from global execution to startup event)
+    Base.metadata.create_all(bind=engine)
+    
     db = SessionLocal()
     try:
         # ✅ 1. Create superadmin if not exists
