@@ -23,7 +23,7 @@ EMAIL_FROM = os.getenv("EMAIL_FROM", "noreply@alphagroups.com")
 EMAIL_FROM_NAME = os.getenv("EMAIL_FROM_NAME", "Alpha Groups Notifications")
 
 
-def send_smtp_email(to_email: str, subject: str, html: str, plain_text: str = None) -> bool:
+def send_email(to_email: str, subject: str, html: str, plain_text: str = None) -> bool:
     """
     Send email using SMTP configuration
     """
@@ -95,7 +95,7 @@ def is_smtp_configured() -> bool:
 if __name__ == "__main__":
     # Test SMTP email functionality
     test_email = os.getenv("TEST_EMAIL", "test@example.com")
-    success = send_smtp_email(
+    success = send_email(
         to_email=test_email,
         subject="SMTP Test",
         html="<h1>Hello Alpha Groups!</h1><p>This is a test email sent via SMTP.</p>",
