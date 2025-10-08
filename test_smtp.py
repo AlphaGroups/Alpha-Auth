@@ -11,30 +11,30 @@ def test_smtp_connection():
     print("Testing SMTP Configuration...")
     
     # Check environment variables
-    smtp_host = os.getenv("EMAIL_HOST", "smtp.gmail.com")
-    smtp_port = int(os.getenv("EMAIL_PORT", "587"))
-    smtp_user = os.getenv("EMAIL_USER", "")
-    smtp_password = os.getenv("EMAIL_PASS", "")
-    email_from = os.getenv("EMAIL_FROM", "noreply@alphagroups.com")
+    EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+    EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+    EMAIL_USER = os.getenv("EMAIL_USER", "")
+    EMAIL_PASS = os.getenv("EMAIL_PASS", "")
+    EMAIL_FROM = os.getenv("EMAIL_FROM", "noreply@alphagroups.com")
     
-    print(f"SMTP Host: {smtp_host}")
-    print(f"SMTP Port: {smtp_port}")
-    print(f"SMTP User: {smtp_user}")
-    print(f"Email From: {email_from}")
+    print(f"SMTP Host: {EMAIL_HOST}")
+    print(f"SMTP Port: {EMAIL_PORT}")
+    print(f"SMTP User: {EMAIL_USER}")
+    print(f"Email From: {EMAIL_FROM}")
     
     # Check if credentials are provided
-    if not smtp_user or not smtp_password:
-        print("❌ Error: SMTP_USER or SMTP_PASSWORD not configured in environment")
+    if not EMAIL_USER or not EMAIL_PASS:
+        print("❌ Error: EMAIL_USER or EMAIL_PASS not configured in environment")
         print("   Make sure you have set EMAIL_USER and EMAIL_PASS in your environment")
         return False
     
     import smtplib
     
     try:
-        print(f"Attempting connection to {smtp_host}:{smtp_port}...")
-        server = smtplib.SMTP(smtp_host, smtp_port)
+        print(f"Attempting connection to {EMAIL_HOST}:{EMAIL_PORT}...")
+        server = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT)
         server.starttls()  # Enable encryption
-        server.login(smtp_user, smtp_password)
+        server.login(EMAIL_USER, EMAIL_PASS)
         print("[SUCCESS] SMTP connection successful!")
         server.quit()
         return True

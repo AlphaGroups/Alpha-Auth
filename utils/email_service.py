@@ -15,10 +15,10 @@ else:
     load_dotenv(".env.development")
 
 # SMTP Configuration from environment
-SMTP_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("EMAIL_PORT", "587"))
-SMTP_USER = os.getenv("EMAIL_USER", "")
-SMTP_PASSWORD = os.getenv("EMAIL_PASS", "")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_USER = os.getenv("EMAIL_USER", "")
+EMAIL_PASS = os.getenv("EMAIL_PASS", "")
 EMAIL_FROM = os.getenv("EMAIL_FROM", "noreply@alphagroups.com")
 EMAIL_FROM_NAME = os.getenv("EMAIL_FROM_NAME", "Alpha Groups Notifications")
 
@@ -34,8 +34,8 @@ def send_email(to_email: str, subject: str, html: str, plain_text: str = None) -
         print("SUBJECT:", subject)
 
         # Check if required SMTP settings are configured
-        if not SMTP_USER or not SMTP_PASSWORD:
-            print("ERROR: SMTP_USER or SMTP_PASSWORD not configured in environment")
+        if not EMAIL_USER or not EMAIL_PASS:
+            print("ERROR: EMAIL_USER or EMAIL_PASS not configured in environment")
             return False
 
         # Create message
@@ -53,11 +53,11 @@ def send_email(to_email: str, subject: str, html: str, plain_text: str = None) -
         msg.attach(html_part)
 
         # Connect to server and send email
-        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
+        server = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT)
         server.set_debuglevel(0)  # Set to 1 to see SMTP communication
         try:
             server.starttls()  # Enable encryption
-            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.login(EMAIL_USER, EMAIL_PASS)
             server.send_message(msg)
         except smtplib.SMTPAuthenticationError:
             print("SMTP Error: Authentication failed. Check your EMAIL_USER and EMAIL_PASS")
@@ -89,7 +89,7 @@ def is_smtp_configured() -> bool:
     """
     Check if SMTP is properly configured
     """
-    return bool(SMTP_USER and SMTP_PASSWORD)
+    return bool(EMAIL_USER and EMAIL_PASS)
 
 
 if __name__ == "__main__":
