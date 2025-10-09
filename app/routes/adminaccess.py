@@ -162,3 +162,86 @@ def revoke_all_access_route(
         raise HTTPException(status_code=500, detail="Database error while revoking all access")
 
     return {"message": f"All class access removed for admin {admin_id}"}
+
+
+@router.get("/admin/{admin_id}/classes", status_code=status.HTTP_200_OK)
+def get_admin_granted_classes(
+    admin_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    """
+    Get all classes that an admin has access to.
+    
+    Args:
+        admin_id (int): ID of the admin to get classes for
+        db (Session): Database session dependency
+        current_user: Currently authenticated user (must be superadmin or the admin themselves)
+    
+    Returns:
+        List[dict]: List of class objects that the admin has access to
+    """
+    # Verify that the current user has permission to view this information
+    # Allow access if user is superadmin OR if user is admin and accessing their own data
+    is_current_user_admin = getattr(current_user, "role", "") == "admin"
+    is_own_data = current_user.id == admin_id
+    
+    if not _is_superadmin(current_user) and (is_current_user_admin and not is_own_data):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    
+    # Get the admin
+    admin = db.query(Admin).filter(Admin.id == admin_id).first()
+    if not admin:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Admin not found")
+    
+    # Get all classes the admin has access to through the relationship
+    classes = []
+    for access in admin.class_accesses:  # This uses the relationship defined in the model
+        class_obj = db.query(Class).filter(Class.id == access.class_id).first()
+        if class_obj:
+            classes.append({
+                "id": class_obj.id,
+                "name": class_obj.name,
+                "access_id": access.id  # ID of the access record
+            })
+    
+    return classes
+
+
+@router.get("/my-classes", status_code=status.HTTP_200_OK)
+def get_my_granted_classes(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    """
+    Get all classes that the current admin user has access to.
+    
+    Args:
+        db (Session): Database session dependency
+        current_user: Currently authenticated user (must be an admin or superadmin)
+    
+    Returns:
+        List[dict]: List of class objects that the current admin has access to
+    """
+    # Allow access for both admins and superadmins
+    current_role = getattr(current_user, "role", "")
+    if current_role not in ["admin", "superadmin"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can access this endpoint")
+    
+    # Get the admin record for the current user
+    admin = db.query(Admin).filter(Admin.user_id == current_user.id).first()
+    if not admin:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Admin record not found")
+    
+    # Get all classes the admin has access to through the relationship
+    classes = []
+    for access in admin.class_accesses:  # This uses the relationship defined in the model
+        class_obj = db.query(Class).filter(Class.id == access.class_id).first()
+        if class_obj:
+            classes.append({
+                "id": class_obj.id,
+                "name": class_obj.name,
+                "access_id": access.id  # ID of the access record
+            })
+    
+    return classes

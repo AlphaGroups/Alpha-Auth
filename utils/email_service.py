@@ -92,6 +92,13 @@ def is_smtp_configured() -> bool:
     return bool(SMTP_USER and SMTP_PASSWORD)
 
 
+def send_email(to_email: str, subject: str, html: str, plain_text: str = None) -> bool:
+    """
+    Send email using SMTP configuration (alias for send_smtp_email)
+    """
+    return send_smtp_email(to_email=to_email, subject=subject, html=html, plain_text=plain_text)
+
+
 if __name__ == "__main__":
     # Test SMTP email functionality
     test_email = os.getenv("TEST_EMAIL", "test@example.com")
