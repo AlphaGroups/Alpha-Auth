@@ -142,9 +142,9 @@ from email.mime.multipart import MIMEMultipart
 
 # Optional: requests for Brevo API
 try:
-    import requests
-except Exception:
-    requests = None
+    import requests  # type: ignore
+except ImportError:
+    requests = None  # type: ignore
 
 # load .env for local/dev
 if os.getenv("APP_ENV") != "production":
@@ -282,23 +282,16 @@ def is_smtp_configured() -> bool:
     """
     Check if SMTP is properly configured
     """
-    return bool(SMTP_USER and SMTP_PASSWORD)
-
-
-def send_email(to_email: str, subject: str, html: str, plain_text: str = None) -> bool:
-    """
-    Send email using SMTP configuration (alias for send_smtp_email)
-    """
-    return send_smtp_email(to_email=to_email, subject=subject, html=html, plain_text=plain_text)
+    return bool(EMAIL_USER and EMAIL_PASS)
 
 
 if __name__ == "__main__":
-    # Test SMTP email functionality
+    # Test email functionality
     test_email = os.getenv("TEST_EMAIL", "test@example.com")
-    success = send_smtp_email(
+    success = send_email(
         to_email=test_email,
-        subject="SMTP Test",
-        html="<h1>Hello Alpha Groups!</h1><p>This is a test email sent via SMTP.</p>",
-        plain_text="Hello Alpha Groups!\n\nThis is a test email sent via SMTP."
+        subject="Email Test",
+        html="<h1>Hello Alpha Groups!</h1><p>This is a test email.</p>",
+        plain_text="Hello Alpha Groups!\n\nThis is a test email."
     )
-    print("SMTP Result:", "Sent" if success else "Failed")
+    print("Email Result:", "Sent" if success else "Failed")
