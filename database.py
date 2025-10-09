@@ -31,7 +31,10 @@
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
+import time
+import logging
 
 # Load environment variables based on environment
 # In production, environment variables are set by Render directly
@@ -57,10 +60,29 @@ if not DATABASE_URL:
     DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
     DB_NAME = os.getenv("DB_NAME", "auth_db")
 
-    DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    # For Docker containers, use the service name instead of localhost
+    if os.getenv("ENV") == "docker" or os.getenv("APP_ENV") == "development":
+        # When running in Docker, the MySQL service is accessible by its container name
+        DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@db:{DB_PORT}/{DB_NAME}"
+    else:
+        DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 # ✅ Create engine - the database driver will be determined by the URL scheme
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+def create_engine_with_retry():
+    max_retries = 10
+    retry_delay = 2
+    
+    for attempt in range(max_retries):
+        try:
+            return create_engine(DATABASE_URL, pool_pre_ping=True)
+        except Exception as e:
+            if attempt == max_retries - 1:
+                logging.error(f"Failed to create database engine after {max_retries} attempts: {str(e)}")
+                raise e
+            logging.warning(f"Database connection attempt {attempt + 1} failed: {str(e)}. Retrying in {retry_delay}s...")
+            time.sleep(retry_delay)
+
+engine = create_engine_with_retry()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

@@ -6,6 +6,7 @@ from database import Base, engine, SessionLocal
 from app.routes.video_routes import router as video_router  
 from models import User, RoleEnum, Class   # ✅ Import Class model
 from utils.security import hash_password
+from utils.class_seeder import seed_classes
 import os
 
 from app.routes.admin import router as admin_router
@@ -25,9 +26,6 @@ if os.getenv("APP_ENV") == "production":
 else:
     # For development, load from .env.development
     load_dotenv(".env.development")
-
-# Create DB tables if not exist
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
@@ -58,6 +56,9 @@ app.add_middleware(
 # ---------- Startup event ----------
 @app.on_event("startup")
 def startup_tasks():
+    # Create DB tables if not exist (moved from global execution to startup event)
+    Base.metadata.create_all(bind=engine)
+    
     db = SessionLocal()
     try:
         # ✅ 1. Create superadmin if not exists
@@ -139,14 +140,8 @@ def startup_tasks():
         else:
             print("⚠️ ADMIN_EMAIL or ADMIN_PASS not set in .env")
 
-        # ✅ 2. Seed Classes (1–12)
-        if db.query(Class).count() == 0:
-            classes = [Class(name=str(i)) for i in range(1, 13)]
-            db.add_all(classes)
-            db.commit()
-            print("✅ Classes 1–12 inserted")
-        else:
-            print("ℹ️ Classes already exist")
+        # ✅ 2. Seed Classes (1–12) using utility function
+        seed_classes()
 
     finally:
         db.close()
