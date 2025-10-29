@@ -46,7 +46,8 @@ app.add_middleware(
         "https://alpha-auth.onrender.com",
         "https://monorepo-web-liard-six.vercel.app",  # production frontend
         "https://monorepo-lms.vercel.app",
-        "https://alphagroups.co.in"
+        "https://alphagroups.co.in",
+        "https://lively-rock-0d84cff1e.3.azurestaticapps.net"
     ],
     allow_credentials=True,
     allow_methods=["*"],
