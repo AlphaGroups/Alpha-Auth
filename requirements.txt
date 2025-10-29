@@ -1,26 +1,28 @@
-# Core Framework
-fastapi==0.115.14
-uvicorn[standard]==0.35.0
+# Core Framework  
+fastapi==0.115.14  
+uvicorn[standard]==0.35.0  
 
-# Database
-SQLAlchemy==2.0.41
-PyMySQL==1.1.1
-sqlmodel==0.0.24  # Optional if you're using SQLModel
+# Database  
+SQLAlchemy==2.0.41  
+PyMySQL==1.1.1  
+sqlmodel==0.0.24  # Optional if you're using SQLModel  
+psycopg2-binary==2.9.9  # For PostgreSQL support (needed in some deployments)
 
-# Security & Auth
-passlib[bcrypt]==1.7.4
-python-jose==3.5.0
-email_validator==2.2.0
-bcrypt==4.3.0
+# Security & Auth  
+passlib[bcrypt]==1.7.4  
+python-jose==3.5.0  
+email_validator==2.2.0  
+bcrypt==3.2.2  
 python-dotenv==1.1.1
 
-# Supporting Dependencies
+# Additional dependencies
+requests==2.32.3
 annotated-types==0.7.0
 anyio==4.9.0
 cffi==1.17.1
 click==8.2.1
 colorama==0.4.6
-cryptography==45.0.4
+cryptography>=4.0.0
 dnspython==2.7.0
 ecdsa==0.19.1
 greenlet==3.2.3
@@ -37,8 +39,6 @@ starlette==0.46.2
 typing-inspection==0.4.1
 typing_extensions==4.14.0
 itsdangerous==2.1.2
-sendgrid==6.12.4
 jinja2>=3.1
-
-
+python-multipart
 

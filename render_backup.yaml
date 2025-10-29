@@ -1,0 +1,39 @@
+databases: 
+  - name: alpha-auth-db 
+    databaseName: alpha_auth 
+    user: alpha_auth_user 
+    plan: free 
+
+services: 
+  - type: web 
+    name: alpha-auth-backend 
+    runtime: docker 
+    plan: free   # can upgrade if needed 
+    branch: feature/student   # <-- correct branch 
+    autoDeploy: true 
+    dockerfilePath: ./Dockerfile 
+    envVars: 
+      - key: ENV 
+        value: production 
+      - key: DATABASE_URL 
+        fromDatabase: 
+          name: alpha-auth-db 
+          property: connectionString 
+      - key: JWT_SECRET_KEY 
+        sync: false 
+      - key: EMAIL_HOST 
+        sync: false
+      - key: EMAIL_PORT 
+        value: "587"
+      - key: EMAIL_USER 
+        sync: false
+      - key: EMAIL_PASS 
+        sync: false
+      - key: EMAIL_FROM 
+        sync: false
+      - key: EMAIL_FROM_NAME 
+        value: "Alpha Groups Notifications"
+      - key: ADMIN_EMAIL 
+        sync: false 
+      - key: ADMIN_PASS 
+        sync: false

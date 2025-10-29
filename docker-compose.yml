@@ -1,12 +1,10 @@
-version: '3.8'
-
 services:
   db:
     image: mysql:8.0
     container_name: mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: auth_db
       MYSQL_USER: user
       MYSQL_PASSWORD: password
@@ -14,25 +12,38 @@ services:
       - "3308:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck: # ✅ ensures MySQL is ready
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-prootpassword",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: fastapi-app
-    command: uvicorn main:app --host 0.0.0.0 --port 9080 --reload
     ports:
-      - "9080:9080"
+      - "9080:10000"
     volumes:
       - .:/app
     depends_on:
-      - db
+      db:
+        condition: service_healthy # ✅ wait for MySQL to be ready
+    env_file:
+      - .env.development
     environment:
-      DB_HOST: db
-      DB_PORT: 3306
-      DB_USER: user
-      DB_PASSWORD: password
-      DB_NAME: auth_db
+      - APP_ENV=development
+      - DEV_MODE=true
+      - ENV=docker  # Special environment flag for docker
 
-volumes:
+volumes: # 👈 you missed this earlier
   mysql_data:
