@@ -25,6 +25,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Only create tables if not in a production environment where migrations are used
+if os.getenv("ENVIRONMENT") != "production":
+    Base.metadata.create_all(bind=engine)
+
 # Add a root endpoint to test if the app is running
 @app.get("/")
 def read_root():
@@ -34,3 +38,8 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "message": "API is running"}
+
+# Add shutdown event to properly close database connections
+@app.on_event("shutdown")
+async def shutdown_event():
+    engine.dispose()
